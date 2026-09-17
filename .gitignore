@@ -14,6 +14,7 @@
 .vs/
 *.csproj
 *.sln
+*.slnx
 *.swp
 *.swo
 .vscode/
@@ -35,7 +36,8 @@
 Builds/
 
 # Local settings
-ProjectSettings/ProjectVersion.txt
+# ProjectVersion.txt is intentionally tracked: it pins the Editor version that the
+# setup script and CI both read, so they can never drift from the project.
 ProjectSettings/UnityConnectSettings.asset
 
 # MCP relay (local binary)

@@ -41,7 +41,15 @@ jobs:
             $errors | ForEach-Object { Write-Error $_ }
             exit 1
           }
-          Write-Host 'Project JSON, MCP security defaults, and PowerShell syntax are valid.'
+          $editorVersion = (Select-String -Path 'ProjectSettings/ProjectVersion.txt' -Pattern '^m_EditorVersion:\s*(\S+)\s*$').Matches[0].Groups[1].Value
+          foreach ($doc in @('README.md', 'docs/LIVE_EDITOR_ONBOARDING.md')) {
+            $stale = Select-String -Path $doc -Pattern '6000\.\d+\.\d+[abfp]\d+' |
+              Where-Object { $_.Matches[0].Value -ne $editorVersion }
+            if ($stale) {
+              throw "$doc references a Unity version other than $editorVersion (from ProjectVersion.txt): $($stale.Matches[0].Value)"
+            }
+          }
+          Write-Host "Project JSON, MCP security defaults, PowerShell syntax, and documented Unity version ($editorVersion) are valid."
 
   build:
     name: Unity Build (WebGL)
@@ -77,6 +85,15 @@ jobs:
           restore-keys: |
             Library-
 
+      - name: Resolve Unity version
+        id: unity
+        if: steps.license.outputs.available == 'true'
+        shell: bash
+        run: |
+          version=$(sed -n 's/^m_EditorVersion: //p' ProjectSettings/ProjectVersion.txt | tr -d '\r')
+          echo "Building with Unity $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Build WebGL
         if: steps.license.outputs.available == 'true'
         uses: game-ci/unity-builder@v4
@@ -86,7 +103,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion: 6000.0.83f1
+          unityVersion: ${{ steps.unity.outputs.version }}
           targetPlatform: WebGL
           buildMethod: BuildScript.PerformWebGLBuild
           projectPath: .
